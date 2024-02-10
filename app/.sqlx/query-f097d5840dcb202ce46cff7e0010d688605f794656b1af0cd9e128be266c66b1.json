@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT into saldo (cliente_id, total, limite)\n            VALUES ($1, $2, $3)\n            RETURNING saldo_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "saldo_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f097d5840dcb202ce46cff7e0010d688605f794656b1af0cd9e128be266c66b1"
+}

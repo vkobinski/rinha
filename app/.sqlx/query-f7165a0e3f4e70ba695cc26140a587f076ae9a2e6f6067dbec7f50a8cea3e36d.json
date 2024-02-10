@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO cliente DEFAULT VALUES RETURNING cliente_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cliente_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f7165a0e3f4e70ba695cc26140a587f076ae9a2e6f6067dbec7f50a8cea3e36d"
+}

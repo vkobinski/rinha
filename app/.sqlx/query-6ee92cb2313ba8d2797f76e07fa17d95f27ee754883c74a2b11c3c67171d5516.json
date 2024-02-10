@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING cliente_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cliente_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6ee92cb2313ba8d2797f76e07fa17d95f27ee754883c74a2b11c3c67171d5516"
+}

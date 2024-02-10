@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE saldo\n                    SET total = $1\n                    WHERE saldo_id = $2\n                    RETURNING saldo_id\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "saldo_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "597f0e34b1c74ea744e7f3d81611aab64043bcc419b4900cadbbae7653c17f07"
+}
