@@ -23,13 +23,12 @@ CREATE TABLE transacao (
     valor INT NOT NULL,
     tipo VARCHAR(1) NOT NULL,
     descricao VARCHAR(10) NOT NULL,
-    realizada_em TIMESTAMP NOT NULL,
+    realizada_em TIMESTAMPTZ NOT NULL,
     CONSTRAINT fk_transacao_cliente
         FOREIGN KEY(cliente_id)
             REFERENCES cliente(cliente_id)
 );
 
-INSERT INTO cliente DEFAULT VALUES;
 INSERT INTO cliente DEFAULT VALUES;
 INSERT INTO cliente DEFAULT VALUES;
 INSERT INTO cliente DEFAULT VALUES;

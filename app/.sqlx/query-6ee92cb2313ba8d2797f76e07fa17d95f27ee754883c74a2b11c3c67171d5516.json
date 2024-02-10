@@ -15,7 +15,7 @@
         "Int4",
         "Varchar",
         "Varchar",
-        "Timestamp"
+        "Timestamptz"
       ]
     },
     "nullable": [

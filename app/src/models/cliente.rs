@@ -26,7 +26,7 @@ impl PostgresRepository {
         match(cliente_saldo, cliente_transacoes) {
             (Ok(Some(mut cliente_saldo)), Ok(cliente_transacoes)) => {
 
-                cliente_saldo.data_extrato = Utc::now().naive_utc();
+                cliente_saldo.data_extrato = Utc::now();
 
                 Ok(Some(Cliente {
                     cliente_id: id,

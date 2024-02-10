@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
 
@@ -13,7 +13,7 @@ pub struct Saldo {
     pub limite: i32,
     #[serde(skip_deserializing)]
     #[sqlx(skip)]
-    pub data_extrato: NaiveDateTime
+    pub data_extrato: DateTime<Utc>
 }
 
 #[derive(Clone, Deserialize)]

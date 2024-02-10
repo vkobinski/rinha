@@ -1,5 +1,4 @@
-use chrono::NaiveDateTime;
-use ::chrono::Utc;
+use ::chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 use sqlx::{postgres::PgTypeInfo, types::chrono, FromRow, Type, TypeInfo};
 
@@ -45,7 +44,7 @@ pub struct Transacao {
     pub valor: i32,
     pub tipo: TipoTransacao,
     pub descricao: Descricao,
-    pub realizada_em: NaiveDateTime,
+    pub realizada_em: DateTime<Utc>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -70,13 +69,25 @@ impl PostgresRepository {
 
         match saldo {
             Ok(Some(saldo)) => {
-                let novo_total = saldo.total - new_transacao.valor;
 
-                if novo_total < -saldo.limite {
-                    return Err(PersistenceError::NotEnoughFunds)
-                }
+                let novo_total: i32;
 
-                let saldo_id : Result<i32, PersistenceError> = sqlx::query!(
+                match new_transacao.tipo {
+                    TipoTransacao::CREDITO => {
+                        novo_total = saldo.total + new_transacao.valor;
+                    },
+                    TipoTransacao::DEBITO => {
+                    if saldo.total - new_transacao.valor < -saldo.limite {
+                        return Err(PersistenceError::NotEnoughFunds)
+                    }
+
+                        novo_total = saldo.total - new_transacao.valor;
+
+
+                    },
+                };
+
+                               let saldo_id : Result<i32, PersistenceError> = sqlx::query!(
                     "
                     UPDATE saldo
                     SET total = $1
@@ -103,13 +114,14 @@ impl PostgresRepository {
 
             },
             Ok(None) => {
-                todo!()
-
+                return Err(PersistenceError::IdDoesNotExist)
             },
-            Err(_) => todo!()
+            Err(err) => {
+                return Err(PersistenceError::from(err));
+            }
         };
 
-        let naive = Utc::now().naive_utc();
+        let datetime: DateTime<Utc> = Utc::now().to_utc();
         let tipo_str : & str = new_transacao.tipo.into();
 
         let transacao_insert = sqlx::query!(
@@ -122,7 +134,7 @@ impl PostgresRepository {
             new_transacao.valor,
             tipo_str,
             new_transacao.descricao.as_str(),
-            naive
+            datetime
             )
             .fetch_one(&self.pool)
             .await
