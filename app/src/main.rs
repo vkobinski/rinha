@@ -11,8 +11,7 @@ type AppState = Arc<PostgresRepository>;
 #[tokio::main]
 async fn main() {
 
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or(String::from("postgresql://192.168.2.101:5432/rinha?user=rinha&password=rinha"));
+    let database_url = env::var("DATABASE_URL").unwrap();
 
     let repository = PostgresRepository::connect(&database_url, 30).await.unwrap();
 
