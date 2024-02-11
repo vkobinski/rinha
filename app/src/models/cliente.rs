@@ -35,8 +35,7 @@ impl PostgresRepository {
             }))
             },
             (Ok(None), Ok(_)) => {
-               println!("No saldo found for this id");
-                Err(PersistenceError::UniqueViolation)
+                Err(PersistenceError::IdDoesNotExist)
             },
             ((_, Err(e)) | (Err(e), _)) => {
                 eprintln!("{:?}", e);

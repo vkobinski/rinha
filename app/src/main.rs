@@ -11,9 +11,9 @@ type AppState = Arc<PostgresRepository>;
 #[tokio::main]
 async fn main() {
 
-    let database_url = env::var("DATABASE_URL").unwrap();
+    let database_url = env::var("DATABASE_URL");
 
-    let repository = PostgresRepository::connect(&database_url, 30).await.unwrap();
+    let repository = PostgresRepository::connect(&database_url, 10).await.unwrap();
 
     let app_state = Arc::new(repository);
 
@@ -36,6 +36,7 @@ async fn get_cliente(
     match repo.find_cliente_by_id(id_cliente).await {
         Ok(Some(cliente)) => Ok(Json(cliente)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(PersistenceError::IdDoesNotExist) => Err(StatusCode::NOT_FOUND),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 }

@@ -13,6 +13,7 @@ pub enum TipoTransacao {
     #[serde(rename = "d")]
     #[sqlx(rename = "d")]
     DEBITO,
+    ERROR,
 }
 
 impl<'a> Into<&'a str> for TipoTransacao {
@@ -31,7 +32,7 @@ impl From<&str> for TipoTransacao {
         match value {
             "c" => Self::CREDITO,
             "d" => Self::DEBITO,
-            _ => unreachable!("Invalid TipoTransacao")
+            _ => Self::ERROR
 
         }
     }
@@ -77,17 +78,17 @@ impl PostgresRepository {
                         novo_total = saldo.total + new_transacao.valor;
                     },
                     TipoTransacao::DEBITO => {
-                    if saldo.total - new_transacao.valor < -saldo.limite {
+                    if (saldo.total - new_transacao.valor) < -saldo.limite {
                         return Err(PersistenceError::NotEnoughFunds)
                     }
-
                         novo_total = saldo.total - new_transacao.valor;
-
-
                     },
+                    TipoTransacao::ERROR => {
+                        return Err(PersistenceError::NotEnoughFunds)
+                    }
                 };
 
-                               let saldo_id : Result<i32, PersistenceError> = sqlx::query!(
+                let saldo_id : Result<i32, PersistenceError> = sqlx::query!(
                     "
                     UPDATE saldo
                     SET total = $1
@@ -106,7 +107,7 @@ impl PostgresRepository {
                         novo_saldo = TransacaoResponse{limite: saldo.limite, saldo: novo_total}
                     }
                     Err(err) => {
-                        return Err(err)
+                        return Err(PersistenceError::from(err))
                     }
                 };
 
@@ -158,6 +159,7 @@ impl PostgresRepository {
             SELECT transacao_id, valor, tipo, descricao, realizada_em
             FROM transacao
             WHERE cliente_id = $1
+            ORDER BY realizada_em DESC
             LIMIT 10
             "
             )
@@ -171,7 +173,7 @@ impl PostgresRepository {
 }
 
 macro_rules! new_string_type {
-    ($type:ident, max_length = $max_length:expr, error = $error_message:expr) => {
+    ($type:ident, max_length = $max_length:expr, error = $error_message:expr, min_length = $min_length:expr, error_min = $error_min:expr) => {
         #[derive(Clone, Serialize, Deserialize, FromRow, sqlx::Type)]
         #[serde(try_from = "String")]
         #[sqlx(type_name = "VARCHAR")]
@@ -188,7 +190,10 @@ macro_rules! new_string_type {
             type Error = &'static str;
 
             fn try_from(value: String) -> Result<Self, Self::Error> {
-                if value.len() <= $max_length {
+                if value.len() < $min_length {
+                    Err($error_min)
+                }
+                else if value.len() <= $max_length {
                     Ok($type(value))
                 } else {
                     Err($error_message)
@@ -207,6 +212,6 @@ macro_rules! new_string_type {
     };
 }
 
-new_string_type!(Descricao, max_length = 10, error = "descricao is too big");
+new_string_type!(Descricao, max_length = 10, error = "descricao is too big", min_length = 1, error_min = "descricao is too short");
 
 
