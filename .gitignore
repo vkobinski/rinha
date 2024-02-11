@@ -1,2 +1,3 @@
 /app/target
 /app/.env
+/app/config.toml

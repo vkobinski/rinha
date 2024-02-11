@@ -11,7 +11,7 @@ type AppState = Arc<PostgresRepository>;
 #[tokio::main]
 async fn main() {
 
-    let database_url = env::var("DATABASE_URL");
+    let database_url = env::var("DATABASE_URL").unwrap();
 
     let repository = PostgresRepository::connect(&database_url, 10).await.unwrap();
 
