@@ -1,6 +1,7 @@
 use ::chrono::{DateTime, Utc};
+use redis::Commands;
 use serde::{Serialize, Deserialize};
-use sqlx::{postgres::PgTypeInfo, types::chrono, FromRow, Type, TypeInfo};
+use sqlx::{postgres::{PgAdvisoryLock, PgAdvisoryLockKey}, Acquire, Connection, FromRow, PgConnection, PgPool};
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
@@ -65,8 +66,16 @@ impl PostgresRepository {
 
     pub async fn create_transacao(&self, new_transacao: NewTransacao, id: i32) -> PersistenceResult<TransacaoResponse> {
 
-        let saldo = self.find_saldo_by_cliente_id(id).await;
         let novo_saldo : TransacaoResponse;
+
+
+        let mut conn = self.pool.acquire().await.unwrap();
+        let transacao_lock = PgAdvisoryLock::with_key(PgAdvisoryLockKey::BigInt(id as i64));
+
+        let lock = transacao_lock.acquire::<&mut PgConnection>(&mut conn).await.unwrap();
+        let saldo = self.find_saldo_by_cliente_id(id, lock).await;
+        let _ = lock.release_now();
+
 
         match saldo {
             Ok(Some(saldo)) => {
@@ -102,6 +111,8 @@ impl PostgresRepository {
                     .await
                     .map(|row| Ok(row.saldo_id))
                     .map_err(PersistenceError::from)?;
+
+
                 match saldo_id {
                     Ok(_) => {
                         novo_saldo = TransacaoResponse{limite: saldo.limite, saldo: novo_total}
@@ -110,15 +121,12 @@ impl PostgresRepository {
                         return Err(PersistenceError::from(err))
                     }
                 };
-
-
-
             },
             Ok(None) => {
                 return Err(PersistenceError::IdDoesNotExist)
             },
             Err(err) => {
-                return Err(PersistenceError::from(err));
+                       return Err(PersistenceError::from(err));
             }
         };
 
@@ -142,6 +150,7 @@ impl PostgresRepository {
             .map(|row| Ok::<i32, PersistenceError>(row.cliente_id))
             .map_err(PersistenceError::from);
 
+
         match transacao_insert {
             Ok(_) => {
                 Ok(novo_saldo)
@@ -154,7 +163,10 @@ impl PostgresRepository {
 
     pub async fn find_transacoes_by_cliente_id(&self, id: i32) -> PersistenceResult<Vec<Transacao>> {
 
-        sqlx::query_as(
+        //let saldo_lock = self.transacao_lock.acquire::<PoolConnection<Postgres>>(self.pool.acquire().await.unwrap()).await.expect("Failed to acquire lock");
+        //println!("POST create transacao acquired lock!");
+
+        let res = sqlx::query_as(
             "
             SELECT transacao_id, valor, tipo, descricao, realizada_em
             FROM transacao
@@ -166,8 +178,12 @@ impl PostgresRepository {
             .bind(id)
             .fetch_all(&self.pool)
             .await
-            .map_err(PersistenceError::from)
+            .map_err(PersistenceError::from);
 
+        //saldo_lock.release_now().await;
+        //println!("POST create transacao released lock!");
+
+        res
     }
 
 }
@@ -213,5 +229,3 @@ macro_rules! new_string_type {
 }
 
 new_string_type!(Descricao, max_length = 10, error = "descricao is too big", min_length = 1, error_min = "descricao is too short");
-
-

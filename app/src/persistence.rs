@@ -1,4 +1,4 @@
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use sqlx::{postgres::{PgAdvisoryLock, PgPoolOptions}, PgConnection, PgPool};
 use std::{error::Error};
 
 #[derive(Debug)]
@@ -39,6 +39,11 @@ impl PostgresRepository {
             .max_connections(pool_size)
             .connect(url)
             .await?;
+
+        //isabella <3
+        //Meu amoire
+
+        //let lock = PgAdvisoryLock::new("saldo_lock");
 
         Ok(PostgresRepository{pool})
     }

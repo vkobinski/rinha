@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
-use sqlx::FromRow;
+use sqlx::{postgres::PgAdvisoryLockGuard, FromRow};
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
@@ -24,7 +24,7 @@ pub struct NewSaldo {
 
 
 impl PostgresRepository {
-    pub async fn find_saldo_by_cliente_id(&self, cliente_id: i32) -> PersistenceResult<Option<Saldo>> {
+    pub async fn find_saldo_by_cliente_id(&self, cliente_id: i32, lock: PgAdvisoryLockGuard<>) -> PersistenceResult<Option<Saldo>> {
         sqlx::query_as(
             "
             SELECT saldo_id, total, limite

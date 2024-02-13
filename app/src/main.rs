@@ -1,7 +1,9 @@
 use axum::{Router, routing::{get, post}, response::IntoResponse, Json, extract::{Path, State}, http::StatusCode};
 use models::transacao::{NewTransacao, TransacaoResponse};
 use persistence::{PersistenceError, PostgresRepository};
+use sqlx::PgConnection;
 use std::{env, sync::Arc};
+use dotenv::dotenv;
 
 mod models;
 mod persistence;
@@ -11,9 +13,13 @@ type AppState = Arc<PostgresRepository>;
 #[tokio::main]
 async fn main() {
 
-    let database_url = env::var("DATABASE_URL").unwrap();
+    dotenv().ok();
 
-    let repository = PostgresRepository::connect(&database_url, 10).await.unwrap();
+    let database_url = env::var("DATABASE_URL").unwrap();
+    let port = env::var("PROD_PORT").unwrap_or("9999".to_string());
+    let max_connections = 50;
+
+    let repository = PostgresRepository::connect(&database_url, max_connections).await.unwrap();
 
     let app_state = Arc::new(repository);
 
@@ -22,7 +28,7 @@ async fn main() {
         .route("/clientes/:id_cliente/extrato", get(get_cliente))
         .with_state(app_state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
 
