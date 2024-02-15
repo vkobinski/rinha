@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
-use sqlx::{postgres::PgAdvisoryLockGuard, FromRow};
+use sqlx::{postgres::PgAdvisoryLockGuard, Executor, FromRow, Postgres, Transaction};
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
@@ -24,8 +24,26 @@ pub struct NewSaldo {
 
 
 impl PostgresRepository {
-    pub async fn find_saldo_by_cliente_id(&self, cliente_id: i32, lock: PgAdvisoryLockGuard<>) -> PersistenceResult<Option<Saldo>> {
-        sqlx::query_as(
+    pub async fn find_saldo_by_cliente_id_with_lock(&self, cliente_id: i32, transaction: &mut Transaction<'_, Postgres>) -> PersistenceResult<Option<Saldo>> {
+
+        let result = sqlx::query_as(
+            "
+            SELECT saldo_id, total, limite
+            FROM saldo
+            WHERE cliente_id = $1
+            FOR UPDATE
+            "
+            ).bind(cliente_id)
+            .fetch_optional(&mut **transaction)
+            .await
+            .map_err(PersistenceError::from);
+
+        result
+    }
+
+pub async fn find_saldo_by_cliente_id(&self, cliente_id: i32) -> PersistenceResult<Option<Saldo>> {
+
+        let result = sqlx::query_as(
             "
             SELECT saldo_id, total, limite
             FROM saldo
@@ -34,8 +52,12 @@ impl PostgresRepository {
             ).bind(cliente_id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(PersistenceError::from)
+            .map_err(PersistenceError::from);
+
+        result
     }
+
+
 
     pub async fn create_saldo(&self, new_saldo: &NewSaldo, cliente_id: i32) -> PersistenceResult<i32> {
 

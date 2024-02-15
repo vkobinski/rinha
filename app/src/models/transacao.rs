@@ -1,7 +1,7 @@
 use ::chrono::{DateTime, Utc};
 use redis::Commands;
 use serde::{Serialize, Deserialize};
-use sqlx::{postgres::{PgAdvisoryLock, PgAdvisoryLockKey}, Acquire, Connection, FromRow, PgConnection, PgPool};
+use sqlx::{postgres::{PgAdvisoryLock, PgAdvisoryLockKey}, Acquire, Connection, Executor, FromRow, PgConnection, PgPool};
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
@@ -66,16 +66,9 @@ impl PostgresRepository {
 
     pub async fn create_transacao(&self, new_transacao: NewTransacao, id: i32) -> PersistenceResult<TransacaoResponse> {
 
+        let mut transaction = self.pool.begin().await.expect("Acquiring lock");
         let novo_saldo : TransacaoResponse;
-
-
-        let mut conn = self.pool.acquire().await.unwrap();
-        let transacao_lock = PgAdvisoryLock::with_key(PgAdvisoryLockKey::BigInt(id as i64));
-
-        let lock = transacao_lock.acquire::<&mut PgConnection>(&mut conn).await.unwrap();
-        let saldo = self.find_saldo_by_cliente_id(id, lock).await;
-        let _ = lock.release_now();
-
+        let saldo = self.find_saldo_by_cliente_id_with_lock(id, &mut transaction).await;
 
         match saldo {
             Ok(Some(saldo)) => {
@@ -97,6 +90,27 @@ impl PostgresRepository {
                     }
                 };
 
+            let datetime: DateTime<Utc> = Utc::now().to_utc();
+        let tipo_str : & str = new_transacao.tipo.into();
+
+        let transacao_insert = sqlx::query!(
+            "
+            INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING cliente_id
+            ",
+            id,
+            new_transacao.valor,
+            tipo_str,
+            new_transacao.descricao.as_str(),
+            datetime
+            )
+            .fetch_one(&mut *transaction)
+            .await
+            .map(|row| Ok::<i32, PersistenceError>(row.cliente_id))
+            .map_err(PersistenceError::from);
+
+
                 let saldo_id : Result<i32, PersistenceError> = sqlx::query!(
                     "
                     UPDATE saldo
@@ -107,7 +121,7 @@ impl PostgresRepository {
                     novo_total,
                     saldo.saldo_id,
                     )
-                    .fetch_one(&self.pool)
+                    .fetch_one(&mut *transaction)
                     .await
                     .map(|row| Ok(row.saldo_id))
                     .map_err(PersistenceError::from)?;
@@ -130,41 +144,14 @@ impl PostgresRepository {
             }
         };
 
-        let datetime: DateTime<Utc> = Utc::now().to_utc();
-        let tipo_str : & str = new_transacao.tipo.into();
+        transaction.commit().await?;
 
-        let transacao_insert = sqlx::query!(
-            "
-            INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING cliente_id
-            ",
-            id,
-            new_transacao.valor,
-            tipo_str,
-            new_transacao.descricao.as_str(),
-            datetime
-            )
-            .fetch_one(&self.pool)
-            .await
-            .map(|row| Ok::<i32, PersistenceError>(row.cliente_id))
-            .map_err(PersistenceError::from);
+        Ok(novo_saldo)
 
-
-        match transacao_insert {
-            Ok(_) => {
-                Ok(novo_saldo)
-            },
-            Err(err) => {
-                Err(err)
-            }
-        }
     }
 
     pub async fn find_transacoes_by_cliente_id(&self, id: i32) -> PersistenceResult<Vec<Transacao>> {
 
-        //let saldo_lock = self.transacao_lock.acquire::<PoolConnection<Postgres>>(self.pool.acquire().await.unwrap()).await.expect("Failed to acquire lock");
-        //println!("POST create transacao acquired lock!");
 
         let res = sqlx::query_as(
             "
@@ -173,6 +160,7 @@ impl PostgresRepository {
             WHERE cliente_id = $1
             ORDER BY realizada_em DESC
             LIMIT 10
+            FOR UPDATE
             "
             )
             .bind(id)
@@ -180,8 +168,6 @@ impl PostgresRepository {
             .await
             .map_err(PersistenceError::from);
 
-        //saldo_lock.release_now().await;
-        //println!("POST create transacao released lock!");
 
         res
     }

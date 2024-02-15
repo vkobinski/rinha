@@ -17,7 +17,7 @@ async fn main() {
 
     let database_url = env::var("DATABASE_URL").unwrap();
     let port = env::var("PROD_PORT").unwrap_or("9999".to_string());
-    let max_connections = 50;
+    let max_connections = 15;
 
     let repository = PostgresRepository::connect(&database_url, max_connections).await.unwrap();
 

@@ -2,6 +2,7 @@ use axum::http::Result;
 
 use chrono::Utc;
 use serde::{Serialize, Deserialize};
+use sqlx::Executor;
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
