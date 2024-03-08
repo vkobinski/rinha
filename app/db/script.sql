@@ -29,6 +29,9 @@ CREATE TABLE transacao (
             REFERENCES cliente(cliente_id)
 );
 
+CREATE INDEX idx_transacoes ON transacao (cliente_id ASC);
+CREATE INDEX idx_saldo ON saldo (cliente_id ASC);
+
 DO $$
 BEGIN
   INSERT INTO cliente (cliente_id)

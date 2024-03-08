@@ -1,5 +1,5 @@
 use sqlx::{postgres::{PgAdvisoryLock, PgPoolOptions}, PgConnection, PgPool};
-use std::{error::Error};
+use std::error::Error;
 
 #[derive(Debug)]
 pub enum PersistenceError {
@@ -37,13 +37,12 @@ impl PostgresRepository {
 
         let pool = PgPoolOptions::new()
             .max_connections(pool_size)
+            .max_lifetime(None)
             .connect(url)
             .await?;
 
         //isabella <3
         //Meu amoire
-
-        //let lock = PgAdvisoryLock::new("saldo_lock");
 
         Ok(PostgresRepository{pool})
     }

@@ -1,6 +1,6 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
-use sqlx::{postgres::PgAdvisoryLockGuard, Executor, FromRow, Postgres, Transaction};
+use sqlx::{FromRow, Postgres, Transaction};
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 

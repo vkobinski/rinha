@@ -17,8 +17,6 @@ services:
     # Não é necessário expor qualquer porta além da porta do load balancer,
     # mas é comum as pessoas o fazerem para testarem suas APIs e conectarem
     # ao banco de dados na fase de desenvolvimento.
-    ports:
-      - "8081:8080"
     depends_on:
       - db
     deploy:
@@ -35,8 +33,6 @@ services:
       - DB_HOSTNAME=rinha
       - DATABASE_URL=postgres://rinha:rinha@db/rinha
       - PROD_PORT=8080
-    ports:
-      - "8082:8080"
 
   nginx:
     image: nginx:latest

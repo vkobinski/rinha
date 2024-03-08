@@ -1,7 +1,6 @@
 use axum::{Router, routing::{get, post}, response::IntoResponse, Json, extract::{Path, State}, http::StatusCode};
-use models::transacao::{NewTransacao, TransacaoResponse};
+use models::transacao::NewTransacao;
 use persistence::{PersistenceError, PostgresRepository};
-use sqlx::PgConnection;
 use std::{env, sync::Arc};
 use dotenv::dotenv;
 
@@ -17,9 +16,11 @@ async fn main() {
 
     let database_url = env::var("DATABASE_URL").unwrap();
     let port = env::var("PROD_PORT").unwrap_or("9999".to_string());
-    let max_connections = 15;
+    let max_connections = env::var("CONNECTIONS").unwrap_or(50.to_string());
 
-    let repository = PostgresRepository::connect(&database_url, max_connections).await.unwrap();
+    println!("connections: {}", max_connections);
+
+    let repository = PostgresRepository::connect(&database_url, max_connections.parse::<u32>().unwrap()).await.unwrap();
 
     let app_state = Arc::new(repository);
 

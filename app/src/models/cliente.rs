@@ -1,8 +1,5 @@
-use axum::http::Result;
-
 use chrono::Utc;
 use serde::{Serialize, Deserialize};
-use sqlx::Executor;
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
@@ -38,7 +35,7 @@ impl PostgresRepository {
             (Ok(None), Ok(_)) => {
                 Err(PersistenceError::IdDoesNotExist)
             },
-            ((_, Err(e)) | (Err(e), _)) => {
+            (_, Err(e)) | (Err(e), _) => {
                 eprintln!("{:?}", e);
                 Err(PersistenceError::UniqueViolation)
             }
@@ -46,6 +43,7 @@ impl PostgresRepository {
 
     }
 
+    #[allow(dead_code)]
     pub async fn create_cliente(&self, limite: i32) -> PersistenceResult<i32> {
 
         let insert_cliente = sqlx::query!("INSERT INTO cliente DEFAULT VALUES RETURNING cliente_id")
