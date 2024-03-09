@@ -6,9 +6,6 @@ services:
     # publicamente acessível! Ex.: hub.docker.com
     image: vkobinski/rinha
     hostname: api01
-    build:
-      context: .
-      dockerfile: ./Dockerfile
     environment:
       - DB_HOSTNAME=rinha
       - DATABASE_URL=postgres://rinha:rinha@db/rinha
@@ -34,7 +31,7 @@ services:
       - DB_HOSTNAME=rinha
       - DATABASE_URL=postgres://rinha:rinha@db/rinha
       - PROD_PORT=8080
-      - CONNECTIONS=150
+      - CONNECTIONS=50
 
   nginx:
     image: nginx:latest

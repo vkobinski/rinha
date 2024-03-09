@@ -1,6 +1,8 @@
 use ::chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use tokio::time::Instant;
+use std::thread;
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
@@ -65,6 +67,8 @@ impl PostgresRepository {
         new_transacao: NewTransacao,
         id: i32,
     ) -> PersistenceResult<TransacaoResponse> {
+
+
         let mut transaction = self.pool.begin().await.expect("Acquiring lock");
         let novo_saldo: TransacaoResponse;
         let saldo = self
@@ -88,40 +92,60 @@ impl PostgresRepository {
                     TipoTransacao::ERROR => return Err(PersistenceError::NotEnoughFunds),
                 };
 
-                //let datetime: DateTime<Utc> = Utc::now().to_utc();
                 let tipo_str: &str = new_transacao.tipo.into();
 
-                let _ = sqlx::query!(
+                //let _ = sqlx::query!(
+                //    "
+                //    INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
+                //    VALUES ($1, $2, $3, $4, now())
+                //    RETURNING cliente_id
+                //    ",
+                //    id,
+                //    new_transacao.valor,
+                //    tipo_str,
+                //    new_transacao.descricao.as_str()
+                //)
+                //.fetch_one(&mut *transaction)
+                //.await
+                //.map(|row| Ok::<i32, PersistenceError>(row.cliente_id))
+                //.map_err(PersistenceError::from);
+
+                //let saldo_id: Result<i32, PersistenceError> = sqlx::query!(
+                //    "
+                //    UPDATE saldo
+                //    SET total = $1
+                //    WHERE saldo_id = $2
+                //    RETURNING saldo_id
+                //    ",
+                //    novo_total,
+                //    saldo.saldo_id,
+                //)
+                //.fetch_one(&mut *transaction)
+                //.await
+                //.map(|row| Ok(row.saldo_id))
+                //.map_err(PersistenceError::from)?;
+
+
+                let saldo_id = sqlx::query!(
                     "
-                    INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
-                    VALUES ($1, $2, $3, $4, now())
-                    RETURNING cliente_id
+                    SELECT create_transaction($1, $2, $3, $4, $5, $6)
                     ",
                     id,
                     new_transacao.valor,
                     tipo_str,
-                    new_transacao.descricao.as_str()
-                    //datetime
-                )
+                    new_transacao.descricao.as_str(),
+                    novo_total,
+                    saldo.saldo_id
+                    )
                 .fetch_one(&mut *transaction)
                 .await
-                .map(|row| Ok::<i32, PersistenceError>(row.cliente_id))
                 .map_err(PersistenceError::from);
 
-                let saldo_id: Result<i32, PersistenceError> = sqlx::query!(
-                    "
-                    UPDATE saldo
-                    SET total = $1
-                    WHERE saldo_id = $2
-                    RETURNING saldo_id
-                    ",
-                    novo_total,
-                    saldo.saldo_id,
-                )
-                .fetch_one(&mut *transaction)
-                .await
-                .map(|row| Ok(row.saldo_id))
-                .map_err(PersistenceError::from)?;
+                //let now = Instant::now();
+
+                tokio::spawn(transaction.commit());
+
+                //println!("{}ms", now.elapsed().as_millis());
 
                 match saldo_id {
                     Ok(_) => {
@@ -138,8 +162,6 @@ impl PostgresRepository {
                 return Err(PersistenceError::from(err));
             }
         };
-
-        transaction.commit().await?;
 
         Ok(novo_saldo)
     }

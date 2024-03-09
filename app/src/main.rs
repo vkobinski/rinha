@@ -40,6 +40,8 @@ async fn get_cliente(
     Path(id_cliente): Path<i32>
     ) -> impl IntoResponse {
 
+
+
     match repo.find_cliente_by_id(id_cliente).await {
         Ok(Some(cliente)) => Ok(Json(cliente)),
         Ok(None) => Err(StatusCode::NOT_FOUND),

@@ -1,6 +1,7 @@
 use chrono::Utc;
 use serde::{Serialize, Deserialize};
 use sqlx::postgres::PgRow;
+use tokio::time::Instant;
 
 use crate::{models::transacao, persistence::{PersistenceError, PersistenceResult, PostgresRepository}};
 

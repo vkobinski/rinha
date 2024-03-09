@@ -44,7 +44,7 @@ BEGIN
     SELECT INTO saldo_record * FROM saldo WHERE cliente_id = cliente_id_param LIMIT 1;
 
      IF NOT FOUND THEN
-        RETURN NULL; -- Return NULL if saldo does not exist
+        RETURN NULL;
     END IF;
 
     -- Get the last transactions if available
@@ -74,6 +74,24 @@ BEGIN
     RETURN result;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION create_transaction(cliente_id_param INT, valor_param INT, tipo_param VARCHAR(1), descricao_param VARCHAR(10), total_param INT, saldo_id_param INT)
+RETURNS INT AS $$
+DECLARE
+    transacao_record RECORD;
+    saldo_record RECORD;
+    result INT;
+BEGIN
+
+    INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
+    VALUES (cliente_id_param, valor_param, tipo_param, descricao_param, NOW());
+
+    UPDATE INTO result saldo SET total = total_param WHERE saldo_id = saldo_id_param RETURNING saldo_id;
+
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
 
 DO $$
 BEGIN
