@@ -4,7 +4,7 @@ use sqlx::{FromRow, Postgres, Transaction};
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
-#[derive(Clone, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Serialize, Deserialize, FromRow, Debug)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Saldo {
     #[serde(skip_serializing)]

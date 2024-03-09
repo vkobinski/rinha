@@ -4,7 +4,7 @@ use sqlx::FromRow;
 
 use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
 
-#[derive(Serialize, Deserialize, Clone, sqlx::Type)]
+#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
 #[sqlx(type_name = "VARCHAR")]
 pub enum TipoTransacao {
     #[serde(rename = "c")]
@@ -88,20 +88,20 @@ impl PostgresRepository {
                     TipoTransacao::ERROR => return Err(PersistenceError::NotEnoughFunds),
                 };
 
-                let datetime: DateTime<Utc> = Utc::now().to_utc();
+                //let datetime: DateTime<Utc> = Utc::now().to_utc();
                 let tipo_str: &str = new_transacao.tipo.into();
 
                 let _ = sqlx::query!(
                     "
                     INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
-                    VALUES ($1, $2, $3, $4, $5)
+                    VALUES ($1, $2, $3, $4, now())
                     RETURNING cliente_id
                     ",
                     id,
                     new_transacao.valor,
                     tipo_str,
-                    new_transacao.descricao.as_str(),
-                    datetime
+                    new_transacao.descricao.as_str()
+                    //datetime
                 )
                 .fetch_one(&mut *transaction)
                 .await
@@ -155,7 +155,6 @@ impl PostgresRepository {
             WHERE cliente_id = $1
             ORDER BY realizada_em DESC
             LIMIT 10
-            FOR UPDATE
             ",
         )
         .bind(id)

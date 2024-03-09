@@ -37,7 +37,6 @@ impl PostgresRepository {
 
         let pool = PgPoolOptions::new()
             .max_connections(pool_size)
-            .max_lifetime(None)
             .connect(url)
             .await?;
 

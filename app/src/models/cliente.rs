@@ -1,7 +1,8 @@
 use chrono::Utc;
 use serde::{Serialize, Deserialize};
+use sqlx::postgres::PgRow;
 
-use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
+use crate::{models::transacao, persistence::{PersistenceError, PersistenceResult, PostgresRepository}};
 
 use super::{saldo::{NewSaldo, Saldo}, transacao::Transacao};
 
@@ -18,28 +19,64 @@ impl PostgresRepository {
 
     pub async fn find_cliente_by_id(&self, id: i32) -> PersistenceResult<Option<Cliente>> {
 
-        let cliente_saldo = self.find_saldo_by_cliente_id(id).await;
-        let cliente_transacoes = self.find_transacoes_by_cliente_id(id).await;
+        let cliente = sqlx::query!(
+            "
+            SELECT get_cliente_details($1)
+            "
+            , id
+            )
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(PersistenceError::from);
 
-        match(cliente_saldo, cliente_transacoes) {
-            (Ok(Some(mut cliente_saldo)), Ok(cliente_transacoes)) => {
+        match cliente {
+            Ok(Some(c)) => {
 
-                cliente_saldo.data_extrato = Utc::now();
+                let details = match c.get_cliente_details {
+                    Some(detail) => {
+                        detail
+                    },
+                    None => {
+                        return Err(PersistenceError::IdDoesNotExist)
+                    }
 
-                Ok(Some(Cliente {
-                    cliente_id: id,
-                    saldo: cliente_saldo,
-                    ultimas_transacoes: Some(cliente_transacoes)
-            }))
+                };
+                let mut saida : Cliente = serde_json::from_value(details.clone()).unwrap();
+
+                saida.saldo.data_extrato = Utc::now();
+
+                Ok(Some(saida))
+
             },
-            (Ok(None), Ok(_)) => {
+            Ok(None) => {
                 Err(PersistenceError::IdDoesNotExist)
             },
-            (_, Err(e)) | (Err(e), _) => {
-                eprintln!("{:?}", e);
+            Err(_) => {
                 Err(PersistenceError::UniqueViolation)
-            }
+            },
+
         }
+
+//
+//        match(saldo, transacao) {
+//            (Ok(Some(mut cliente_saldo)), Ok(cliente_transacoes)) => {
+//
+//                cliente_saldo.data_extrato = Utc::now();
+//
+//                Ok(Some(Cliente {
+//                    cliente_id: id,
+//                    saldo: cliente_saldo,
+//                    ultimas_transacoes: Some(cliente_transacoes)
+//            }))
+//            },
+//            (Ok(None), Ok(_)) => {
+//                Err(PersistenceError::IdDoesNotExist)
+//            },
+//            (_, Err(e)) | (Err(e), _) => {
+//                eprintln!("{:?}", e);
+//                Err(PersistenceError::UniqueViolation)
+//            }
+//        }
 
     }
 

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.7.4", features = ["macros"] }
 tokio = { version = "1.30.0", features = ["full"] }
-sqlx = { git = "https://github.com/vkobinski/sqlx",features = ["postgres", "macros", "runtime-tokio", "chrono", "_rt-tokio"] }
+sqlx = { git = "https://github.com/vkobinski/sqlx",features = ["postgres", "macros", "runtime-tokio", "chrono"] }
 serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.113"
 chrono = { version = "0.4.33", features = ["serde"]}

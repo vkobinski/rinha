@@ -32,6 +32,49 @@ CREATE TABLE transacao (
 CREATE INDEX idx_transacoes ON transacao (cliente_id ASC);
 CREATE INDEX idx_saldo ON saldo (cliente_id ASC);
 
+CREATE OR REPLACE FUNCTION get_cliente_details(cliente_id_param INT)
+RETURNS JSON AS $$
+DECLARE
+    saldo_record RECORD;
+    transactions_array JSON;
+    result JSON;
+BEGIN
+
+    -- Get the saldo record
+    SELECT INTO saldo_record * FROM saldo WHERE cliente_id = cliente_id_param LIMIT 1;
+
+     IF NOT FOUND THEN
+        RETURN NULL; -- Return NULL if saldo does not exist
+    END IF;
+
+    -- Get the last transactions if available
+    transactions_array = (
+        SELECT json_agg(row_to_json(trans))
+        FROM (
+            SELECT *
+            FROM transacao
+            WHERE cliente_id = cliente_id_param
+            ORDER BY realizada_em DESC
+            LIMIT 10
+        ) trans
+    );
+
+    -- Construct the result JSON object
+    result = json_build_object(
+        'cliente_id', cliente_id_param,
+        'saldo', json_build_object(
+            'saldo_id', saldo_record.saldo_id,
+            'total', saldo_record.total,
+            'limite', saldo_record.limite,
+            'data_extrato', now()
+        ),
+        'ultimas_transacoes', transactions_array
+    );
+
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
 DO $$
 BEGIN
   INSERT INTO cliente (cliente_id)
