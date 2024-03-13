@@ -19,8 +19,10 @@ async fn main() {
     let max_connections = env::var("CONNECTIONS").unwrap_or(50.to_string());
 
     println!("connections: {}", max_connections);
+    println!("port:        {}", port);
 
     let repository = PostgresRepository::connect(&database_url, max_connections.parse::<u32>().unwrap()).await.unwrap();
+    repository.warm_up().await;
 
     let app_state = Arc::new(repository);
 
@@ -66,7 +68,8 @@ async fn create_transacao(
             Err(PersistenceError::IdDoesNotExist) => {
                 Err(StatusCode::NOT_FOUND)
             },
-            _ => {
+            Err(err) => {
+                eprintln!("{:?}", err);
                 Err(StatusCode::INTERNAL_SERVER_ERROR)
             }
         }

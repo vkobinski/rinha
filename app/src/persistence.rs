@@ -1,6 +1,8 @@
 use sqlx::{postgres::{PgAdvisoryLock, PgPoolOptions}, PgConnection, PgPool};
 use std::error::Error;
 
+use crate::models::transacao::{Descricao, NewTransacao, TipoTransacao};
+
 #[derive(Debug)]
 pub enum PersistenceError {
     UniqueViolation,
@@ -44,5 +46,24 @@ impl PostgresRepository {
         //Meu amoire
 
         Ok(PostgresRepository{pool})
+    }
+
+    pub async fn warm_up(&self) {
+
+        for _i in 0..50 {
+            let _ = self.find_cliente_by_id(9999).await;
+        }
+
+        for _i in 0..50 {
+            let transacao = NewTransacao{
+                valor : 2000,
+                tipo : TipoTransacao::CREDITO,
+                descricao : Descricao::try_from(String::from("teste")).unwrap()
+            };
+            let _ = self.create_transacao(transacao, 9999).await;
+        }
+
+
+
     }
 }

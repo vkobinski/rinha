@@ -2,9 +2,7 @@ use ::chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use tokio::time::Instant;
-use std::thread;
-
-use crate::persistence::{PersistenceError, PersistenceResult, PostgresRepository};
+use crate::{models::saldo::NewSaldo, persistence::{PersistenceError, PersistenceResult, PostgresRepository}};
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
 #[sqlx(type_name = "VARCHAR")]
@@ -62,6 +60,70 @@ pub struct TransacaoResponse {
 }
 
 impl PostgresRepository {
+     pub async fn create_transacao_in_db(
+        &self,
+        new_transacao: NewTransacao,
+        id: i32,
+    ) -> PersistenceResult<TransacaoResponse> {
+
+
+                let tipo_str: &str = new_transacao.tipo.into();
+                let mut novo_saldo: Option<TransacaoResponse> = None;
+
+                let saldo = sqlx::query!(
+                    "
+                    SELECT add_transaction($1, $2, $3, $4)
+                    "
+                    ,id,
+                    new_transacao.valor,
+                    tipo_str,
+                    new_transacao.descricao.as_str()
+                    )
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(PersistenceError::from);
+
+
+                match saldo {
+                    Ok(Some(c)) => {
+                        let details = match c.add_transaction {
+                              Some(detail) => {
+                                  detail
+                              },
+                              None => {
+                                  return Err(PersistenceError::IdDoesNotExist)
+                              }
+
+                          };
+                          let saida : NewSaldo = match serde_json::from_value(details.clone()) {
+                              Ok(s) => s,
+                              Err(_) => {
+                                  return Err(PersistenceError::NotEnoughFunds)
+                              }
+                          };
+
+                        novo_saldo = Some(TransacaoResponse {
+                            limite: saida.limite,
+                            saldo: saida.total,
+                        })
+                    },
+                    Ok(_) => {
+                    },
+                    Err(err) => {
+                        return Err(PersistenceError::from(err))},
+                };
+
+                match novo_saldo {
+                    Some(s) => Ok(s),
+                    None => {
+                        return Err(PersistenceError::IdDoesNotExist)
+                    },
+
+                }
+
+    }
+
+
     pub async fn create_transacao(
         &self,
         new_transacao: NewTransacao,
@@ -94,37 +156,6 @@ impl PostgresRepository {
 
                 let tipo_str: &str = new_transacao.tipo.into();
 
-                //let _ = sqlx::query!(
-                //    "
-                //    INSERT INTO transacao (cliente_id, valor, tipo, descricao, realizada_em)
-                //    VALUES ($1, $2, $3, $4, now())
-                //    RETURNING cliente_id
-                //    ",
-                //    id,
-                //    new_transacao.valor,
-                //    tipo_str,
-                //    new_transacao.descricao.as_str()
-                //)
-                //.fetch_one(&mut *transaction)
-                //.await
-                //.map(|row| Ok::<i32, PersistenceError>(row.cliente_id))
-                //.map_err(PersistenceError::from);
-
-                //let saldo_id: Result<i32, PersistenceError> = sqlx::query!(
-                //    "
-                //    UPDATE saldo
-                //    SET total = $1
-                //    WHERE saldo_id = $2
-                //    RETURNING saldo_id
-                //    ",
-                //    novo_total,
-                //    saldo.saldo_id,
-                //)
-                //.fetch_one(&mut *transaction)
-                //.await
-                //.map(|row| Ok(row.saldo_id))
-                //.map_err(PersistenceError::from)?;
-
 
                 let saldo_id = sqlx::query!(
                     "
@@ -141,11 +172,8 @@ impl PostgresRepository {
                 .await
                 .map_err(PersistenceError::from);
 
-                //let now = Instant::now();
 
                 tokio::spawn(transaction.commit());
-
-                //println!("{}ms", now.elapsed().as_millis());
 
                 match saldo_id {
                     Ok(_) => {

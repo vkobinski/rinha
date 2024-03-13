@@ -1,3 +1,4 @@
 /app/target
 /app/.env
 /app/config.toml
+docker-compose-prod.yml
